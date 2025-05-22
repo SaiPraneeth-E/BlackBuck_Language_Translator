@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangMate - An AI Language Translator </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
+    <!-- Font Awesome with a CDN that doesn't require a kit ID -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Animated Background Bubbles -->
+    <div class="bubbles-container">
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+    </div>
+
+    <header class="header">
+        <div class="logo-container">
+            <div class="logo-icon">🌐</div>
+            <h1 class="animated-title">LangMate - AI Powered Language Translator</h1>
+        </div>
+        <div class="theme-toggle">
+            <i class="fas fa-sun"></i>
+            <div class="toggle-switch">
+                <label for="theme-switch" class="visually-hidden">Toggle dark mode</label>
+                <input type="checkbox" id="theme-switch" title="Toggle dark mode">
+            </div>
+            <i class="fas fa-moon"></i>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="description-card">
+            <div class="description-icon">
+                <i class="fas fa-robot pulse"></i>
+            </div>
+            <p class="description">
+                Leverage advanced NLP for seamless translations. This tool interprets context, grammar, and nuances for high-quality output, understanding idioms and complex structures.
+            </p>
+        </div>
+
+        <div class="main-content-area">
+            <div class="translation-section">
+                <form method="POST" action="{{ url_for('translate_text') }}" class="form-section" id="translateForm">
+                    <div class="form-group animated-element">
+                        <label for="text_to_translate">
+                            <i class="fas fa-pen-fancy"></i> Enter Text to Translate:
+                        </label>
+                        <textarea name="text_to_translate" id="text_to_translate" rows="6" required placeholder="Type or paste text here...">{{ original_text or '' }}</textarea>
+                        <span class="char-count">0 characters</span>
+                    </div>
+
+                    <div class="language-selectors">
+                        <div class="form-group animated-element">
+                            <label for="source_lang">
+                                <i class="fas fa-language"></i> From Language:
+                            </label>
+                            <div class="select-wrapper">
+                                <select name="source_lang" id="source_lang">
+                                    <option value="auto" {% if source_lang == 'auto' %}selected{% endif %}>Detect Language</option>
+                                    {% for code, name in supported_languages.items() %}
+                                    <option value="{{ code }}" {% if source_lang == code %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="select-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="language-exchange">
+                            <button type="button" id="exchangeLanguages" title="Exchange languages" aria-label="Exchange source and target languages">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </div>
+
+                        <div class="form-group animated-element">
+                            <label for="target_lang">
+                                <i class="fas fa-globe-americas"></i> To Language:
+                            </label>
+                            <div class="select-wrapper">
+                                <select name="target_lang" id="target_lang" required>
+                                    {% for code, name in supported_languages.items() %}
+                                    <option value="{{ code }}" {% if target_lang == code or (not target_lang and code == 'es') %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="select-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="translate-button">
+                        <span class="button-icon"><i class="fas fa-language"></i></span>
+                        <span class="button-text">Translate Text</span>
+                        <span class="button-loader"><i class="fas fa-circle-notch fa-spin"></i></span>
+                    </button>
+                </form>
+
+                {% if error %}
+                <div class="message-box error-message visible">
+                    <div class="message-icon"><i class="fas fa-exclamation-circle"></i></div>
+                    <p><strong>Error:</strong> {{ error }}</p>
+                </div>
+                {% endif %}
+
+                {% if message %}
+                <div class="message-box info-message visible">
+                    <div class="message-icon"><i class="fas fa-info-circle"></i></div>
+                    <p>{{ message }}</p>
+                </div>
+                {% endif %}
+
+                <div class="translation-result-section {% if translated_text and not error %}visible{% endif %}" id="translationResultArea">
+                    <h2><i class="fas fa-check-circle"></i> Translation Result:</h2>
+                    <div class="form-group result-group">
+                        <textarea readonly rows="6" id="translatedOutput" placeholder="Translation will appear here...">{{ translated_text or '' }}</textarea>
+                        <div class="result-actions">
+                            <button type="button" id="copyTranslation" class="action-button" title="Copy to clipboard" aria-label="Copy translated text to clipboard">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button type="button" id="listenTranslation" class="action-button" title="Listen to translated text" aria-label="Listen to translated text">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                            <button type="button" id="shareTranslation" class="action-button" title="Share translation" aria-label="Share translation">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% if detected_source_lang and detected_source_lang_name and not error %}
+                        <p class="detected-lang-info">
+                            <i class="fas fa-magic"></i> Detected source language:
+                            <span class="lang-badge">{{ detected_source_lang_name }} ({{ detected_source_lang }})</span>
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <aside class="history-section">
+                <div class="history-header">
+                    <h2><i class="fas fa-history"></i> Past Searches <span class="history-count">({{ history|length }})</span></h2>
+                    <div class="history-search">
+                        <input type="text" id="historySearch" placeholder="Search history...">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+
+                {% if history %}
+                    <ul class="history-list" id="historyList">
+                    {% for item in history %}
+                        <li class="history-item"
+                            onclick='fillFormFromHistory({{ item.original | tojson | safe }}, "{{ item.source_code }}", "{{ item.target_code }}")'
+                            title="Click to reuse this translation"
+                            role="button"
+                            tabindex="0">
+                            <div class="history-original"><strong>From {{ item.source_name }}:</strong> {{ item.original | truncate(45, True, '...') }}</div>
+                            <div class="history-translated"><strong>To {{ item.target_name }}:</strong> {{ item.translated | truncate(45, True, '...') }}</div>
+                            <div class="history-meta">
+                                <span class="history-date"><i class="far fa-clock"></i> Just now</span> {# Consider making this dynamic or from data #}
+                                <button type="button" class="history-delete" title="Remove from history" aria-label="Remove this item from history"><i class="fas fa-times"></i></button>
+                            </div>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                    <form method="POST" action="{{ url_for('clear_history') }}" class="clear-history-form">
+                        <button type="submit" class="clear-history-button">
+                            <i class="fas fa-trash-alt"></i> Clear History
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="no-history">
+                        <div class="empty-state-icon">
+                            <i class="far fa-folder-open"></i>
+                        </div>
+                        <p>No past searches yet.</p>
+                    </div>
+                {% endif %}
+            </aside>
+        </div>
+
+        <div class="dataset-info-section">
+            <h3><i class="fas fa-brain"></i> Conceptual Basis: Training Data</h3>
+            <p>
+                This demonstration utilizes a readily available translation service.
+                Truly advanced, context-aware translation models are trained on vast amounts of parallel text data.
+            </p>
+            <div class="machine-learning-animation">
+                <div class="node input-node"></div>
+                <div class="node hidden-node"></div>
+                <div class="node hidden-node"></div>
+                <div class="node output-node"></div>
+                <div class="connections"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-styled-image">
+        <div class="footer-waves">
+            <svg class="waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                viewBox="0 24 150 28" preserveAspectRatio="none" shape-rendering="auto">
+                <defs>
+                    <path id="gentle-wave" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z" />
+                </defs>
+                <g class="parallax">
+                    <use xlink:href="#gentle-wave" x="48" y="0" fill="rgba(52, 152, 219, 0.7)" />
+                    <use xlink:href="#gentle-wave" x="48" y="3" fill="rgba(52, 152, 219, 0.5)" />
+                    <use xlink:href="#gentle-wave" x="48" y="5" fill="rgba(52, 152, 219, 0.3)" />
+                    <use xlink:href="#gentle-wave" x="48" y="7" fill="rgba(52, 152, 219, 0.1)" />
+                </g>
+            </svg>
+        </div>
+
+        <div class="footer-container">
+            <p class="footer-name-regno">
+                EDUPULAPATI SAI PRANEETH (23BCE8762)
+            </p>
+            <div class="footer-contact-line">
+                <a href="mailto:edupulapatisaipraneeth12345@gmail.com" class="footer-link" target="_blank" rel="noopener noreferrer">
+                    <i class="fas fa-envelope footer-icon"></i>
+                    <span>edupulapatisaipraneeth12345@gmail.com</span>
+                </a>
+            </div>
+            <div class="footer-contact-line multi-item">
+                <a href="mailto:praneeth.23bce8762@vitapstudent.ac.in" class="footer-link" target="_blank" rel="noopener noreferrer">
+                     <i class="fas fa-graduation-cap footer-icon"></i>
+                    <span>praneeth.23bce8762@vitapstudent.ac.in</span>
+                </a>
+                <a href="tel:+918977771494" class="footer-link">
+                    <i class="fas fa-phone-alt footer-icon"></i>
+                    <span>8977771494</span>
+                </a>
+            </div>
+            <div class="footer-social-line">
+                <a href="https://www.linkedin.com/in/edupulapati-sai-praneeth-74a252291/" class="footer-social-icon-link" target="_blank" rel="noopener noreferrer" title="LinkedIn">
+                    <i class="fab fa-linkedin footer-icon-social"></i>
+                    <span class="social-text-label">LinkedIn</span>
+                </a>
+                <a href="https://www.instagram.com/saipraneeth_edupulapati/?hl=en" class="footer-social-icon-link" target="_blank" rel="noopener noreferrer" title="Instagram">
+                    <i class="fab fa-instagram footer-icon-social"></i>
+                    <span class="social-text-label">Instagram</span>
+                </a>
+                <a href="https://www.facebook.com/praneeth.saidpraneeth" class="footer-social-icon-link" target="_blank" rel="noopener noreferrer" title="Facebook">
+                    <i class="fab fa-facebook-f footer-icon-social"></i>
+                    <span class="social-text-label">Facebook</span>
+                </a>
+            </div>
+            <p class="footer-copyright-image">
+                © <span id="currentYear"></span> LangMate. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Share Modal -->
+    <div class="modal" id="shareModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Translation</h3>
+                <button type="button" class="modal-close" title="Close share modal" aria-label="Close share modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-options">
+                    <button type="button" class="share-option" data-platform="copy" title="Copy link">
+                        <i class="fas fa-copy"></i>
+                        <span>Copy Link</span>
+                    </button>
+                    <button type="button" class="share-option" data-platform="twitter" title="Share on Twitter">
+                        <i class="fab fa-twitter"></i>
+                        <span>Twitter</span>
+                    </button>
+                    <button type="button" class="share-option" data-platform="facebook" title="Share on Facebook">
+                        <i class="fab fa-facebook"></i>
+                        <span>Facebook</span>
+                    </button>
+                    <button type="button" class="share-option" data-platform="whatsapp" title="Share on WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </button>
+                    <button type="button" class="share-option" data-platform="email" title="Share via Email">
+                        <i class="fas fa-envelope"></i>
+                        <span>Email</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Year in footer
+            const yearSpan = document.getElementById('currentYear');
+            if (yearSpan) {
+                yearSpan.textContent = new Date().getFullYear();
+            }
+
+            // Translation result visibility
+            const translatedOutput = document.getElementById('translatedOutput');
+            const translationResultArea = document.getElementById('translationResultArea');
+            const errorBox = document.querySelector('.message-box.error-message.visible');
+
+            if (translatedOutput && translatedOutput.value.trim() !== '' && !errorBox) {
+                translationResultArea.classList.add('visible');
+            } else if (translationResultArea) {
+                 translationResultArea.classList.remove('visible');
+            }
+
+            // Auto-hide messages after delay
+            setTimeout(() => {
+                const messages = document.querySelectorAll('.message-box.visible');
+                messages.forEach(msg => {
+                    msg.style.opacity = '0';
+                    setTimeout(() => {
+                        msg.classList.remove('visible');
+                        msg.style.display = 'none'; // Ensure it's removed from layout
+                    }, 500); // Match CSS transition
+                });
+            }, 5000);
+
+            // Character count for textarea
+            const textArea = document.getElementById('text_to_translate');
+            const charCount = document.querySelector('.char-count');
+
+            if (textArea && charCount) {
+                const updateCharCount = () => {
+                    const count = textArea.value.length;
+                    charCount.textContent = `${count} characters`;
+                    if (count > 500) { // Example limit
+                        charCount.classList.add('warning');
+                    } else {
+                        charCount.classList.remove('warning');
+                    }
+                };
+
+                textArea.addEventListener('input', updateCharCount);
+                updateCharCount(); // Initial count
+            }
+
+            // Copy translation button
+            const copyBtn = document.getElementById('copyTranslation');
+            if (copyBtn && translatedOutput) {
+                copyBtn.addEventListener('click', () => {
+                    const textToCopy = translatedOutput.value;
+
+                    const showFeedback = () => {
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => {
+                            copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+                    };
+
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            showFeedback();
+                        }).catch(err => {
+                            console.error('Failed to copy with navigator.clipboard: ', err);
+                            // Fallback to execCommand
+                            translatedOutput.select();
+                            document.execCommand('copy');
+                            showFeedback(); // Assuming execCommand worked or provide different feedback
+                        });
+                    } else {
+                        // Fallback for older browsers
+                        translatedOutput.select();
+                        document.execCommand('copy');
+                        showFeedback();
+                    }
+                });
+            }
+
+            // Text-to-speech functionality
+            const listenBtn = document.getElementById('listenTranslation');
+            if (listenBtn && translatedOutput) {
+                listenBtn.addEventListener('click', () => {
+                    if ('speechSynthesis' in window && translatedOutput.value) {
+                        const text = translatedOutput.value;
+                        const utterance = new SpeechSynthesisUtterance(text);
+
+                        const targetLangSelect = document.getElementById('target_lang');
+                        if (targetLangSelect) {
+                             utterance.lang = targetLangSelect.value;
+                        }
+
+                        // Stop any previous speech
+                        window.speechSynthesis.cancel();
+                        window.speechSynthesis.speak(utterance);
+
+                        listenBtn.innerHTML = '<i class="fas fa-stop-circle"></i>'; // Indicate speaking, can be stop
+                        listenBtn.title = "Stop listening";
+
+                        utterance.onend = () => {
+                            listenBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                            listenBtn.title = "Listen to translated text";
+                        };
+                        utterance.onerror = () => {
+                            listenBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                            listenBtn.title = "Listen to translated text";
+                            console.error("Speech synthesis error");
+                        };
+                    } else if (!translatedOutput.value) {
+                        // Handle case where there's no text to speak
+                        console.log("No text to speak.");
+                    } else {
+                        console.error("Speech synthesis not supported.");
+                        // Optionally provide feedback to user that TTS is not available
+                    }
+                });
+            }
+
+            // Share functionality
+            const shareBtn = document.getElementById('shareTranslation');
+            const shareModal = document.getElementById('shareModal');
+            const modalClose = shareModal ? shareModal.querySelector('.modal-close') : null;
+
+            if (shareBtn && shareModal && modalClose) {
+                shareBtn.addEventListener('click', () => {
+                    shareModal.classList.add('visible');
+                });
+
+                modalClose.addEventListener('click', () => {
+                    shareModal.classList.remove('visible');
+                });
+
+                window.addEventListener('click', (e) => {
+                    if (e.target === shareModal) {
+                        shareModal.classList.remove('visible');
+                    }
+                });
+
+                document.querySelectorAll('.share-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        const platform = option.getAttribute('data-platform');
+                        const shareText = translatedOutput.value;
+                        const pageUrl = window.location.href; // For platforms that share URLs
+
+                        let url;
+                        switch(platform) {
+                            case 'twitter':
+                                url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+                                window.open(url, '_blank');
+                                break;
+                            case 'facebook':
+                                // Facebook's sharer.php prefers a URL to share. Quote is for pre-filling user message.
+                                url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}"e=${encodeURIComponent(shareText)}`;
+                                window.open(url, '_blank');
+                                break;
+                            case 'whatsapp':
+                                url = `https://wa.me/?text=${encodeURIComponent(shareText + "\n\n" + pageUrl)}`; // Text and URL
+                                window.open(url, '_blank');
+                                break;
+                            case 'email':
+                                url = `mailto:?subject=Translation&body=${encodeURIComponent(shareText + "\n\nShared from: " + pageUrl)}`;
+                                window.location.href = url;
+                                break;
+                            case 'copy': // Copy the translated text, not a link to the page
+                                navigator.clipboard.writeText(shareText).then(() => {
+                                    option.innerHTML = '<i class="fas fa-check"></i><span>Copied!</span>';
+                                    setTimeout(() => {
+                                        option.innerHTML = '<i class="fas fa-copy"></i><span>Copy Text</span>'; // Changed from Copy Link to Copy Text
+                                    }, 2000);
+                                }).catch(err => console.error('Failed to copy text: ', err));
+                                break;
+                        }
+                        shareModal.classList.remove('visible'); // Close modal after action
+                    });
+                });
+            }
+
+            // Exchange languages button
+            const exchangeBtn = document.getElementById('exchangeLanguages');
+            if (exchangeBtn) {
+                exchangeBtn.addEventListener('click', () => {
+                    const sourceLang = document.getElementById('source_lang');
+                    const targetLang = document.getElementById('target_lang');
+
+                    if (sourceLang.value !== 'auto') {
+                        const temp = sourceLang.value;
+                        sourceLang.value = targetLang.value;
+                        targetLang.value = temp;
+
+                        exchangeBtn.classList.add('rotate');
+                        setTimeout(() => {
+                            exchangeBtn.classList.remove('rotate');
+                        }, 500);
+                    } else {
+                        // Optionally, provide feedback if trying to swap "Detect Language"
+                        // For example, flash the source_lang dropdown or show a small message
+                        console.log("Cannot swap 'Detect Language'. Please select a specific source language.");
+                    }
+                });
+            }
+
+            // Search history functionality
+            const historySearch = document.getElementById('historySearch');
+            const historyList = document.getElementById('historyList');
+
+            if (historySearch && historyList) {
+                historySearch.addEventListener('input', () => {
+                    const query = historySearch.value.toLowerCase().trim();
+                    const items = historyList.querySelectorAll('.history-item');
+
+                    items.forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        if (text.includes(query)) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // History item click (for keyboard users if onclick on LI with role=button doesn't fire on Enter/Space consistently)
+            if (historyList) {
+                historyList.addEventListener('keydown', function(event) {
+                    if ((event.key === 'Enter' || event.key === ' ') && event.target.classList.contains('history-item')) {
+                        event.preventDefault(); // Prevent space from scrolling
+                        event.target.click(); // Trigger the onclick handler
+                    }
+                });
+            }
+
+
+            // Theme toggle
+            const themeSwitch = document.getElementById('theme-switch');
+            if (themeSwitch) {
+                const currentTheme = localStorage.getItem('dark-mode');
+                if (currentTheme === 'true') {
+                    document.body.classList.add('dark-mode');
+                    themeSwitch.checked = true;
+                }
+
+                themeSwitch.addEventListener('change', () => {
+                    if (themeSwitch.checked) {
+                        document.body.classList.add('dark-mode');
+                        localStorage.setItem('dark-mode', 'true');
+                    } else {
+                        document.body.classList.remove('dark-mode');
+                        localStorage.setItem('dark-mode', 'false');
+                    }
+                });
+            }
+
+            // Animation for form submission - show loading state
+            const translateForm = document.getElementById('translateForm');
+            const translateBtn = document.querySelector('.translate-button');
+
+            if (translateForm && translateBtn) {
+                translateForm.addEventListener('submit', (e) => {
+                    // Basic client-side validation
+                    const textToTranslate = document.getElementById('text_to_translate').value.trim();
+                    const targetLang = document.getElementById('target_lang').value;
+
+                    if (!textToTranslate) {
+                        e.preventDefault();
+                        alert("Please enter text to translate.");
+                        // Or show a more styled message
+                        return;
+                    }
+                    if (!targetLang) {
+                        e.preventDefault();
+                        alert("Please select a target language.");
+                        return;
+                    }
+                    translateBtn.classList.add('loading');
+                    translateBtn.disabled = true; // Disable button during submission
+                });
+            }
+            // Re-enable button if page is reloaded (e.g. form submission error from server, or back button)
+             if (translateBtn) {
+                translateBtn.classList.remove('loading');
+                translateBtn.disabled = false;
+            }
+
+
+            // Animated elements on scroll
+            const animatedElements = document.querySelectorAll('.animated-element');
+            const animateOnScroll = () => {
+                animatedElements.forEach(element => {
+                    const elementTop = element.getBoundingClientRect().top;
+                    const windowHeight = window.innerHeight;
+
+                    if (elementTop < windowHeight - 50) { // 50px offset
+                        element.classList.add('visible');
+                    }
+                });
+            };
+
+            if (animatedElements.length > 0) {
+                animateOnScroll(); // Initial check
+                window.addEventListener('scroll', animateOnScroll);
+            }
+
+            initNeuralNetworkAnimation();
+        });
+
+        function fillFormFromHistory(originalText, sourceLang, targetLang) {
+            const textToTranslateArea = document.getElementById('text_to_translate');
+            const sourceSelect = document.getElementById('source_lang');
+            const targetSelect = document.getElementById('target_lang');
+
+            if (textToTranslateArea) textToTranslateArea.value = originalText;
+
+            if (sourceSelect) {
+                if (Array.from(sourceSelect.options).some(opt => opt.value === sourceLang)) {
+                    sourceSelect.value = sourceLang;
+                } else {
+                    sourceSelect.value = 'auto'; // Default if provided lang not found
+                }
+            }
+
+            if (targetSelect) {
+                 if (Array.from(targetSelect.options).some(opt => opt.value === targetLang)) {
+                    targetSelect.value = targetLang;
+                } else if (targetSelect.options.length > 1) { // Fallback to first non-placeholder if targetLang not found
+                    targetSelect.value = targetSelect.options[1].value;
+                } else if (targetSelect.options.length > 0) {
+                    targetSelect.value = targetSelect.options[0].value;
+                }
+            }
+
+            // Trigger char count update
+            if (textToTranslateArea) {
+                const event = new Event('input', { bubbles: true, cancelable: true });
+                textToTranslateArea.dispatchEvent(event);
+            }
+
+
+            const formElement = document.getElementById('translateForm');
+            if(formElement) {
+                formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (textToTranslateArea) textToTranslateArea.focus();
+        }
+
+        function initNeuralNetworkAnimation() {
+            const animationContainer = document.querySelector('.machine-learning-animation');
+            const connections = animationContainer ? animationContainer.querySelector('.connections') : null;
+            if (!connections || !animationContainer) return;
+
+            const nodes = Array.from(animationContainer.querySelectorAll('.node'));
+            connections.innerHTML = ''; // Clear existing connections
+
+            const createConnectionLine = (x1, y1, x2, y2) => {
+                const connection = document.createElement('div');
+                connection.className = 'connection';
+
+                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+                connection.style.width = `${length}px`;
+                connection.style.left = `${x1}px`;
+                connection.style.top = `${y1}px`;
+                connection.style.transform = `rotate(${angle}deg)`;
+                return connection;
+            };
+
+            // Corrected logic to connect nodes based on specific type (second class)
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const currentNode = nodes[i];
+                const nextNodeTypeCandidate = nodes[i+1]; // The next node in the flat list
+
+                if (nextNodeTypeCandidate && nextNodeTypeCandidate.classList.length > 1) {
+                    const specificTypeClass = nextNodeTypeCandidate.classList[1]; // e.g., 'hidden-node', 'output-node'
+
+                    // Query all nodes of that specific type to connect to
+                    const nextNodesOfType = Array.from(animationContainer.querySelectorAll(`.${specificTypeClass}`));
+
+                    nextNodesOfType.forEach(nextNode => {
+                        // Avoid connecting a node to itself if currentNode is also of nextNode's type
+                        // and also avoid re-connecting if the sequential next node is not the one we are iterating to
+                        if (currentNode !== nextNode) {
+                            const x1 = currentNode.offsetLeft + currentNode.offsetWidth / 2;
+                            const y1 = currentNode.offsetTop + currentNode.offsetHeight / 2;
+                            const x2 = nextNode.offsetLeft + nextNode.offsetWidth / 2;
+                            const y2 = nextNode.offsetTop + nextNode.offsetHeight / 2;
+                            connections.appendChild(createConnectionLine(x1, y1, x2, y2));
+                        }
+                    });
+                }
+            }
+
+            // Animate data flow (simple visual)
+            let particleInterval = setInterval(() => {
+                if (!document.body.contains(connections)) { // Stop if element is removed
+                    clearInterval(particleInterval);
+                    return;
+                }
+                const allConnectionLines = connections.querySelectorAll('.connection');
+                if (allConnectionLines.length === 0) return;
+
+                const randomConnection = allConnectionLines[Math.floor(Math.random() * allConnectionLines.length)];
+
+                const dataParticle = document.createElement('div');
+                dataParticle.className = 'data-particle';
+
+                // Start particle at the beginning of the chosen connection line
+                dataParticle.style.left = randomConnection.style.left;
+                dataParticle.style.top = randomConnection.style.top;
+                dataParticle.style.transform = randomConnection.style.transform; // Align with line
+                dataParticle.style.opacity = '1';
+                connections.appendChild(dataParticle);
+
+                // Animate particle along the line
+                // This is a simplified animation; true path animation is more complex
+                let progress = 0;
+                const animationDuration = 1800; // ms
+                const startTime = performance.now();
+
+                function animateParticle(currentTime) {
+                    const elapsedTime = currentTime - startTime;
+                    progress = elapsedTime / animationDuration;
+
+                    if (progress < 1) {
+                        // This moves along the div's local x-axis (which is rotated)
+                        dataParticle.style.transform = `${randomConnection.style.transform} translateX(${progress * parseFloat(randomConnection.style.width)}px)`;
+                        requestAnimationFrame(animateParticle);
+                    } else {
+                        dataParticle.remove();
+                    }
+                }
+                requestAnimationFrame(animateParticle);
+
+            }, 1000); // Create a new particle every second
+        }
+    </script>
+</body>
+</html>
