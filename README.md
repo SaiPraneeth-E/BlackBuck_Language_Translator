@@ -2,8 +2,9 @@
 
 LangMate is a web-based application designed to provide seamless and intelligent multilingual text translation. It leverages advanced AI-powered translation capabilities to interpret context, grammar, and cultural nuances, delivering high-quality, fluent, and natural-sounding translations. This tool is built for users like travelers, businesses, students, and content creators who need to bridge language barriers effectively.
 
-![image](https://github.com/user-attachments/assets/e81438c1-32ed-4e00-aab1-b8337da69bd3)
-![image](https://github.com/user-attachments/assets/30b953c0-6543-48bb-a182-af0382460d49)
+![Screenshot 2025-05-22 000131](https://github.com/user-attachments/assets/7d9fdb9b-6f6e-4516-8095-fc566bce5f6f)
+![Screenshot 2025-05-22 000234](https://github.com/user-attachments/assets/71840629-49cd-48e3-b2ba-0b89342e2d8d)
+
 
 ## Features
 
